@@ -34,7 +34,7 @@ try:
     while True:
         print("%.f RPM" % rpm)
         rpm = 0
-        time.sleep(1)   # Detect every second
+        time.sleep(WAIT_TIME)   # Detect every second
 
 except KeyboardInterrupt:   # trap a CTRL+C keyboard interrupt
     exit()
