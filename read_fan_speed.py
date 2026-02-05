@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from gpiozero import Button
+from threading import Lock
 import time
 
 # Pin configuration
@@ -12,29 +13,31 @@ WAIT_TIME = 1   # [s] Time to wait between each refresh
 fan_tach = Button(TACH_PIN)
 
 # Setup variables
-t = time.time()
-rpm = 0
+pulse_count = 0
+pulse_lock = Lock()
 
-# Caculate pulse frequency and RPM
+# Calculate pulse frequency and RPM
 def pressed():
-    global t
-    global rpm
-
-    dt = time.time() - t
-    if dt < 0.005:
-        return  # Reject spuriously short pulses
-
-    freq = 1 / dt
-    rpm = (freq / PULSE) * 60
-    t = time.time()
+    global pulse_count
+    with pulse_lock:
+        pulse_count += 1
 
 fan_tach.when_activated = pressed
 
 try:
+    last = time.monotonic()
     while True:
-        print("%.f RPM" % rpm)
-        rpm = 0
         time.sleep(WAIT_TIME)   # Detect every second
+        now = time.monotonic()
+        interval = now - last
+        last = now
+        with pulse_lock:
+            pulses = pulse_count
+            pulse_count = 0
+        rpm = 0.0
+        if interval > 0:
+            rpm = (pulses / PULSE) * (60 / interval)
+        print(f"{rpm:.0f} RPM")
 
 except KeyboardInterrupt:   # trap a CTRL+C keyboard interrupt
     exit()
